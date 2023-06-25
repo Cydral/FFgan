@@ -160,3 +160,59 @@
     </tr>
   </tbody>
 </table>
+
+<h2>Usage</h2>
+<p>
+  The first example demonstrates training the FFgan model using the images in the specified directory. The second example shows how to generate a specified number of images automatically using the trained model. In this case, the command <code>FFgan --gen 10</code> generates 10 images.
+</p>
+
+<p>
+  <code>FFgan --train &lt;directory&gt;</code>
+</p>
+<p>
+  <strong>Description:</strong>
+  <br>
+  Trains or fine-tunes the FFgan model using the images provided in the specified directory. The directory should directly contain all the images or subdirectories containing the images. The images will be resized to 162x162 pixels during training. It is recommended that the images have a minimum size of 162 pixels on each side (note that the default face extraction modules in Dlib extract faces of 200 pixels on each side).
+</p>
+<p>
+  <strong>Arguments:</strong>
+</p>
+<ul>
+  <li><code>--train &lt;directory&gt;</code>: Specifies the directory containing the training images. The directory should directly contain the images or subdirectories containing the images.</li>
+</ul>
+
+<br><p>
+  <code>FFgan --gen &lt;number&gt;</code>
+</p>
+<p>
+  <strong>Description:</strong>
+  <br>
+  Generates a specified number of images automatically and displays them in a window. The program performs a test using the discriminator to check if the generated image is an acceptable "candidate." If not, it iterates a certain number of times to try to find a higher-quality image.
+</p>
+<p>
+  <strong>Arguments:</strong>
+</p>
+<ul>
+  <li><code>--gen &lt;number&gt;</code>: Generates a specified number of images automatically and displays them in a window. The program does not perform a test based on the specified number; instead, it allows the user to manually stop the generation process by closing the window where the generated faces are displayed or by using Ctrl+C in the execution console.</li>
+</ul>
+
+<br><p>
+  <code>FFgan --web</code>
+</p>
+<p>
+  <strong>Description:</strong>
+  <br>
+  Instantiates a local web server listening for requests on port 9190 and generates a face receiving a request from a Web browser.
+</p>
+<p>
+  <strong>Arguments:</strong>
+</p>
+<ul>
+  <li><code>--gen &lt;number&gt;</code>: Allows direct access to the generated images via a web interface. Users can access the generated images by navigating to <code>http://localhost:9190</code> in their web browser.</li>
+</ul>
+
+<h2>Acknowledgments</h2>
+
+<p>
+  Special thanks to Davis E. King and all the contributors for the amazing Dlib library. Their dedication and hard work have made it possible to develop high-quality and efficient AI models using Dlib. We are grateful for the quality and speed of the AI models provided by Dlib, which greatly contribute to the success of the FFgan program.
+</p>
