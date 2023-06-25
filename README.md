@@ -212,7 +212,7 @@
 
 <h2>License</h2>
 <p>
-  This program is licensed under the GNU General Public License (GPL). The GPL grants users the freedom to use, modify, and distribute the software. However, commercial usage is not allowed under this license. It will also be strongly appreciated that any external usage of this program, especially in academic area, includes proper attribution to the author and his work. Please provide a reference <b>Cydral</b> and acknowledge its contributions when using the FFgan program for research or other purposes.
+  This program is licensed under the <a href="https://github.com/Cydral/FFgan/blob/main/LICENSE">GNU General Public License (GPL)</a>. The GPL grants users the freedom to use, modify, and distribute the software. However, commercial usage is not allowed under this license. It will also be strongly appreciated that any external usage of this program, especially in academic area, includes proper attribution to the author and his work. Please provide a reference <b>Cydral</b> and acknowledge its contributions when using the FFgan program for research or other purposes.
 </p>
 
 <h2>Acknowledgments</h2>
