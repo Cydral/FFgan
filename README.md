@@ -37,3 +37,126 @@
 
 <p>FFgan designed from the example "dnn_dcgan_train_ex.cpp" (available at <a href="http://dlib.net/dnn_dcgan_train_ex.cpp.html">http://dlib.net/dnn_dcgan_train_ex.cpp.html</a>). The CNN model has been adapted for generating high-quality color images.</p>
 
+<p>Generator model:</p>
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Output Shape</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Input (1x100 Noise Tensor)</td>
+      <td>(1, 100)</td>
+    </tr>
+    <tr>
+      <td>ReLU/BatchNorm</td>
+      <td>(4, 4, 512)</td>
+    </tr>
+    <tr>
+      <td>ConvTranspose</td>
+      <td>(10, 10, 256)</td>
+    </tr>
+    <tr>
+      <td>ReLU/BatchNorm</td>
+      <td>(20, 20, 128)</td>
+    </tr>
+    <tr>
+      <td>ConvTranspose</td>
+      <td>(40, 40, 128)</td>
+    </tr>
+    <tr>
+      <td>ReLU/BatchNorm</td>
+      <td>(80, 80, 64)</td>
+    </tr>
+    <tr>
+      <td>ConvTranspose</td>
+      <td>(162, 162, 3)</td>
+    </tr>
+    <tr>
+      <td>Output</td>
+      <td>(162, 162, 3)</td>
+    </tr>    
+    <tr>
+      <td>Sigmoid</td>
+      <td>(1, 1)</td>
+    </tr>
+    <tr>
+      <td>FC</td>
+      <td>(1, 1)</td>
+    </tr>    
+  </tbody>    
+</table>
+
+<p>Discriminator model:</p>
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Output Shape</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Input: RGB Image</td>
+      <td>(162, 162, 3)</td>
+    </tr>
+    <tr>
+      <td>Convolution</td>
+      <td>(160, 160, 3)</td>
+    </tr>
+    <tr>
+      <td>LeakyReLU/BatchNorm/Dropout</td>
+      <td>(160, 160, 3)</td>
+    </tr>
+    <tr>
+      <td>Convolution</td>
+      <td>(80, 80, 512)</td>
+    </tr>
+    <tr>
+      <td>LeakyReLU/BatchNorm/Dropout</td>
+      <td>(80, 80, 512)</td>
+    </tr>
+    <tr>
+      <td>Convolution</td>
+      <td>(78, 78, 256)</td>
+    </tr>
+    <tr>
+      <td>LeakyReLU/BatchNorm/Dropout</td>
+      <td>(78, 78, 256)</td>
+    </tr>
+    <tr>
+      <td>Convolution</td>
+      <td>(39, 39, 128)</td>
+    </tr>
+    <tr>
+      <td>LeakyReLU/BatchNorm/Dropout</td>
+      <td>(39, 39, 128)</td>
+    </tr>
+    <tr>
+      <td>Convolution</td>
+      <td>(19, 19, 128)</td>
+    </tr>
+    <tr>
+      <td>LeakyReLU/BatchNorm/Dropout</td>
+      <td>(19, 19, 128)</td>
+    </tr>
+    <tr>
+      <td>Convolution</td>
+      <td>(9, 9, 64)</td>
+    </tr>
+    <tr>
+      <td>LeakyReLU/BatchNorm/Dropout</td>
+      <td>(9, 9, 64)</td>
+    </tr>
+    <tr>
+      <td>FullyConnected</td>
+      <td>(1, 1)</td>
+    </tr>
+    <tr>
+      <td>Output</td>
+      <td>Real/Fake Classification</td>
+    </tr>
+  </tbody>
+</table>
