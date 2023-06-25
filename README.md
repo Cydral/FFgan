@@ -23,7 +23,6 @@
 
 <h2>Installation</h2>
 <p>To install FFgan and recompile the program, follow these steps:</p>
-
 <ol>
   <li>Ensure that you have the latest version of Dlib (version 19.24) installed.</li>
   <li>Make sure you have a compatible platform, such as Windows 10, and the Microsoft Visual Studio 2022 (64-bit, Version 17.6.0) compiler.</li>
@@ -211,8 +210,12 @@
   <li><code>--gen &lt;number&gt;</code>: Allows direct access to the generated images via a web interface. Users can access the generated images by navigating to <code>http://localhost:9190</code> in their web browser.</li>
 </ul>
 
-<h2>Acknowledgments</h2>
+<h2>License</h2>
+<p>
+  This program is licensed under the GNU General Public License (GPL). The GPL grants users the freedom to use, modify, and distribute the software. However, commercial usage is not allowed under this license. It will also be strongly appreciated that any external usage of this program, especially in academic area, includes proper attribution to the author and his work. Please provide a reference <b>Cydral Technology</b> and acknowledge its contributions when using the FFgan program for research or other purposes.
+</p>
 
+<h2>Acknowledgments</h2>
 <p>
   Special thanks to Davis E. King and all the contributors for the amazing Dlib library. Their dedication and hard work have made it possible to develop high-quality and efficient AI models using Dlib. We are grateful for the quality and speed of the AI models provided by Dlib, which greatly contribute to the success of the FFgan program.
 </p>
