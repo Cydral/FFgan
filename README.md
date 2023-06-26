@@ -12,6 +12,8 @@
 
 <p>An additional advantage of FFgan is its contribution to the protection of personal data. As the generation process relies solely on synthetic data, there is no need to use real faces or store large-scale personal datasets. This mitigates privacy concerns and reduces the risk of data breaches, making it a privacy-friendly solution for face-related research and applications.</p>
 
+<center><a href="results.png" alt=""></a></center>
+
 <h2>Features</h2>
 <ul>
   <li>GAN-based face generation.</li>
