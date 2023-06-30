@@ -351,7 +351,7 @@ void handle_request(display_generator_type& gen, display_discriminator_type& dis
         matrix<rgb_pixel> gen_image;
         bool is_real = false;
         size_t current_image = 0, target_image_size = 150;
-        while (!is_real && current_image++ < 80 && !g_interrupted) {
+        while (!is_real && current_image++ < 30 && !g_interrupted) {
             gen_image = generate_image_for_display<rgb_pixel>(gen, make_noise(rnd));
             is_real = (disc(gen_image) > 0);
         }
@@ -432,7 +432,7 @@ int main(int argc, char** argv) try
 
         // Resume training from last sync file
         size_t iteration = 0;
-        if (file_exists("dcgan_sync")) deserialize("dcgan_sync") >> generator >> discriminator >> epoch;
+        if (file_exists("dcgan_162x162_synth_faces.sync")) deserialize("dcgan_162x162_synth_faces.sync") >> generator >> discriminator >> iteration >> epoch;
 
         const size_t minibatch_size = 64;        
         const std::vector<float> real_labels(minibatch_size, 1);
@@ -497,7 +497,7 @@ int main(int argc, char** argv) try
             generator.update_parameters(g_solvers, learning_rate);
 
             // At some point, we should see that the generated images start looking like samples
-            if (++iteration % 100 == 0) { // Display
+            if (++iteration % 10 == 0) { // Display
                 std::cout <<
                     "epoch#: " << epoch <<
                     "\tstep#: " << iteration <<                    
@@ -509,16 +509,17 @@ int main(int argc, char** argv) try
             }
             if (iteration % 1000 == 0)
             {
-                serialize("dcgan_sync") << generator << discriminator << epoch;
+                serialize("dcgan_162x162_synth_faces.sync") << generator << discriminator << iteration << epoch;
                 d_loss.clear();
                 g_loss.clear();
             }
         }
 
         // Once the training has finished, we don't need the discriminator any more. We just keep the generator.
-        serialize("dcgan_sync") << generator << discriminator << epoch;
+        serialize("dcgan_162x162_synth_faces.sync") << generator << discriminator << iteration << epoch;
         generator.clean();
-        serialize("dcgan.dnn") << generator;
+        discriminator.clean();
+        serialize("dcgan_162x162_synth_faces.dnn") << generator << discriminator;
     }
     else if (option == "--gen") {
         if (argc < 3) {
@@ -530,11 +531,11 @@ int main(int argc, char** argv) try
         size_t max_images = strtoul(argv[2], &end_ptr, 10);
 
         // Instantiate both generator and discriminator
-        size_t epoch;
+        cout << "Loading model... ";
         display_generator_type generator;
         display_discriminator_type discriminator;
-        if (file_exists("dcgan_sync")) deserialize("dcgan_sync") >> generator >> discriminator >> epoch;
-        if (file_exists("dcgan.dnn")) deserialize("dcgan.dnn") >> generator;
+        if (file_exists("dcgan_162x162_synth_faces.dnn")) deserialize("dcgan_162x162_synth_faces.dnn") >> generator >> discriminator;
+        cout << "done" << endl;
 
         dlib::image_window win;
         win.set_title("FAKES - Generated image");
@@ -546,7 +547,7 @@ int main(int argc, char** argv) try
         {
             current_image = 0;
             is_real = false;
-            while (!is_real && current_image++ < 80) {
+            while (!is_real && current_image++ < 30) {
                 gen_image = generate_image_for_display<rgb_pixel>(generator, make_noise(rnd));
                 is_real = (discriminator(gen_image) > 0);
             }
@@ -558,12 +559,10 @@ int main(int argc, char** argv) try
     else if (option == "--web") {
         try {
             // Instantiate both generator and discriminator
-            size_t epoch;
             cout << "Loading model... ";
             display_generator_type generator;
             display_discriminator_type discriminator;
-            if (file_exists("dcgan_sync")) deserialize("dcgan_sync") >> generator >> discriminator >> epoch;
-            if (file_exists("dcgan.dnn")) deserialize("dcgan.dnn") >> generator;
+            if (file_exists("dcgan_162x162_synth_faces.dnn")) deserialize("dcgan_162x162_synth_faces.dnn") >> generator >> discriminator;
             cout << "done" << endl;
 
             // Instantiate the Web server
@@ -591,7 +590,7 @@ int main(int argc, char** argv) try
         }
     }
     else {
-        std::cout << "Invalid option. Usage: program_name --train <directory> or --test" << std::endl;
+        std::cout << "Invalid option. Usage: FFgan --train <directory>, --gen <number> or --web" << std::endl;
     }
     return EXIT_SUCCESS;
 }
