@@ -11,7 +11,7 @@
 <p>FFgan opens up new possibilities for designing and iterating on novel face models. It allows designers and developers to experiment with different facial features, expressions, and attributes, accelerating the development of innovative applications in various fields, including computer graphics, entertainment, virtual reality, and character design.</p>
 
 <p>An additional advantage of FFgan is its contribution to the protection of personal data. As the generation process relies solely on synthetic data, there is no need to use real faces or store large-scale personal datasets. This mitigates privacy concerns and reduces the risk of data breaches, making it a privacy-friendly solution for face-related research and applications.</p>
-<img src="https://github.com/Cydral/FFgan/blob/main/results.png?raw=true"></img>
+<img src="https://github.com/Cydral/FFgan/blob/main/results_0.png?raw=true"></img>
 
 <h2>Features</h2>
 <ul>
