@@ -31,9 +31,8 @@
   <li>Open the project in Microsoft Visual Studio.</li>
   <li>Recompile the project using the provided source files.</li>
 </ol>
-<p>Note: The provided synchronization file also allows you to recreate the model from scratch if needed.</p>
 
-<p>The training process for FFgan involved utilizing a dataset of over 250,000 faces extracted from real photos captured from the internet. A dedicated crawler was created specifically for this purpose. The face extraction and alignment process used traditional techniques, including those demonstrated in the examples of the Dlib library.</p>
+<p>The training process for FFgan involved utilizing a dataset of over 150,000 faces extracted from real photos captured from the internet. A dedicated crawler was created specifically for this purpose. The face extraction and alignment process used traditional techniques, including those demonstrated in the examples of the Dlib library.</p>
 
 <p>FFgan designed from the example "dnn_dcgan_train_ex.cpp" (available at <a href="http://dlib.net/dnn_dcgan_train_ex.cpp.html">http://dlib.net/dnn_dcgan_train_ex.cpp.html</a>). The CNN model has been adapted for generating high-quality color images.</p>
 
