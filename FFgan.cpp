@@ -89,7 +89,6 @@ using display_discriminator_type = loss_binary_log<fc<1,
     dropout<leaky_relu<conp<64, 4, 2, 0,
     input<matrix<rgb_pixel>>
     >>>>>>>>>>>>>>>>>>>>>>;
-// For 150x150 images
 
 std::atomic<bool> g_interrupted = false;
 std::atomic<bool> g_web_server = false;
@@ -97,16 +96,36 @@ BOOL WINAPI CtrlHandler(DWORD ctrlType) {
     if (ctrlType == CTRL_C_EVENT) {
         g_interrupted = true;
         if (g_web_server) {
-            http::request<http::empty_body> stop_request;
-            stop_request.method(http::verb::get);
-            stop_request.target("/stop");
-            boost::asio::io_context io_context;
-            tcp::resolver resolver(io_context);
-            tcp::resolver::results_type endpoints = resolver.resolve("localhost", "9190");
-            tcp::socket stop_socket(io_context);
-            boost::asio::connect(stop_socket, endpoints);
-            http::write(stop_socket, stop_request);
-            stop_socket.close();
+            try {
+                boost::asio::io_service io_service;
+                tcp::resolver resolver(io_service);
+                tcp::resolver::iterator endpoints = resolver.resolve("localhost", "9190");
+                tcp::socket stop_socket(io_service);
+                boost::asio::connect(stop_socket, endpoints);
+                http::request<http::empty_body> stop_request;
+                stop_request.method(http::verb::get);
+                stop_request.target("/stop");
+                http::write(stop_socket, stop_request);
+                boost::asio::streambuf response;
+                boost::asio::read_until(stop_socket, response, "\r\n");
+                std::istream response_stream(&response);
+                std::string http_version;
+                response_stream >> http_version;
+                unsigned int status_code;
+                response_stream >> status_code;
+                std::string status_message;
+                std::getline(response_stream, status_message);
+                if (response_stream && http_version.substr(0, 5) != "HTTP/" && status_code == 200)
+                {
+                    boost::asio::read_until(stop_socket, response, "\r\n\r\n");
+                    std::string header;
+                    while (std::getline(response_stream, header) && header != "\r");
+                    boost::system::error_code error;
+                    while (boost::asio::read(stop_socket, response, boost::asio::transfer_at_least(1), error));
+                }
+            } catch (std::exception& e) {
+                std::cout << "Exception: " << e.what() << "\n";
+            }
         }
         return TRUE;
     }
@@ -146,6 +165,7 @@ void resize_images(std::vector<matrix<pixel_type>>& images, long new_size = defa
 }
 
 // Some helper functions to generate and get the images from the generator
+std::mutex gen_mutex;  // Déclaration du mutex
 template <typename pixel_type>
 matrix<pixel_type> generate_image(generator_type& net, const noise_t& noise)
 {
@@ -169,7 +189,7 @@ matrix<pixel_type> generate_image(generator_type& net, const noise_t& noise)
 }
 template <typename pixel_type>
 matrix<pixel_type> generate_image_for_display(display_generator_type& net, const noise_t& noise)
-{
+{    
     net(noise);
     matrix<pixel_type> image;
     if constexpr (std::is_same_v<pixel_type, gray_pixel>) {
@@ -346,44 +366,58 @@ bool set_load_jpeg_buffer(dlib::matrix<dlib::rgb_pixel>& in_img, std::vector<uns
 }
 void handle_request(display_generator_type& gen, display_discriminator_type& disc, dlib::rand& rnd, const http::request<http::string_body>& req, http::response<http::string_body>& res)
 {
-    if (req.method() == http::verb::get && (req.target().empty() || req.target() == "/get_image" || req.target() == "/"))
-    {
-        matrix<rgb_pixel> gen_image;
-        bool is_real = false;
-        size_t current_image = 0, target_image_size = 150;
-        while (!is_real && current_image++ < 30 && !g_interrupted) {
-            gen_image = generate_image_for_display<rgb_pixel>(gen, make_noise(rnd));
-            is_real = (disc(gen_image) > 0);
+    try {
+        if (req.method() == http::verb::get && (req.target().empty() || req.target() == "/get_raw_image" || req.target() == "/get_image" || req.target() == "/"))
+        {
+            const bool send_raw_data = (req.target() == "/get_raw_image");
+            matrix<rgb_pixel> gen_image;
+            bool is_real = false;
+            size_t current_image = 0, target_image_size = 150;            
+            while (!is_real && current_image++ < 10 && !g_interrupted) {
+                std::lock_guard<std::mutex> lock(gen_mutex);
+                gen_image = generate_image_for_display<rgb_pixel>(gen, make_noise(rnd));
+                is_real = (send_raw_data || (disc(gen_image) > 0));
+            }            
+            resize_inplace(gen_image, target_image_size);
+            std::vector<unsigned char> compressed;
+            set_load_jpeg_buffer(gen_image, compressed);
+
+            // HTML dynamically created
+            std::string html;
+            if (send_raw_data) {
+                html += "data:image/jpeg;base64," + base64_encode(reinterpret_cast<const unsigned char*>(compressed.data()), compressed.size());
+            } else {
+                html += "<html><head>";
+                html += "<style>";
+                html += "body { text-align: center; }";
+                html += "h1 { color: #333; }";
+                html += "img { cursor: pointer; }";
+                html += "</style>";
+                html += "</head><body>";
+                html += "<h1>FAKES - Generated image</h1>";
+                html += "<p>GANs are used to create synthetic data, such as realistic faces of non-existent individuals, by training a generator to produce data that can deceive a discriminator:</p>";
+                html += "<img src=\"data:image/jpeg;base64," + base64_encode(reinterpret_cast<const unsigned char*>(compressed.data()), compressed.size()) + "\" alt=\"Generated Image\" onclick=\"location.reload();\">";
+                html += "<br><br>";
+                html += "<button onclick=\"location.reload();\">Regenerate</button>";
+                html += "</body></html>";
+            }
+
+            // Send back the response
+            res.result(http::status::ok);
+            res.set(http::field::content_type, send_raw_data ? "text/plain" : "text/html");
+            res.body() = std::move(html);
         }
-        resize_inplace(gen_image, target_image_size);
-        std::vector<unsigned char> compressed;
-        set_load_jpeg_buffer(gen_image, compressed);
-
-        // HTML dynamically created
-        std::string html = "<html><head>";
-        html += "<style>";
-        html += "body { text-align: center; }";
-        html += "h1 { color: #333; }";
-        html += "img { cursor: pointer; }";
-        html += "</style>";
-        html += "</head><body>";
-        html += "<h1>FAKES - Generated image</h1>";
-        html += "<p>GANs are used to create synthetic data, such as realistic faces of non-existent individuals, by training a generator to produce data that can deceive a discriminator:</p>";
-        html += "<img src=\"data:image/jpeg;base64," + base64_encode(reinterpret_cast<const unsigned char*>(compressed.data()), compressed.size()) + "\" alt=\"Generated Image\" onclick=\"location.reload();\">";
-        html += "<br><br>";
-        html += "<button onclick=\"location.reload();\">Regenerate</button>";
-        html += "</body></html>";
-
-        // Send back the response
-        res.result(http::status::ok);
-        res.set(http::field::content_type, "text/html");
-        res.body() = html;
+        else {
+            res.result(http::status::not_found);
+            res.set(http::field::content_type, "text/plain");
+            res.body() = std::move(std::string("Page not found"));
+        }
     }
-    else
-    {
-        res.result(http::status::not_found);
+    catch (const std::exception& e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        res.result(http::status::internal_server_error);
         res.set(http::field::content_type, "text/plain");
-        res.body() = "Page not found";
+        res.body() = std::move(std::string("Internal Server Error"));
     }
 }
 
@@ -396,7 +430,7 @@ int main(int argc, char** argv) try
     std::string option = argv[1];
     std::srand(std::time(nullptr));
     dlib::rand rnd(std::rand());
-    size_t epoch = 0;
+    size_t epoch = 0, iteration = 0;
 
     if (option == "--train") {
         if (argc < 3) {
@@ -431,8 +465,11 @@ int main(int argc, char** argv) try
         double learning_rate = 2e-4;
 
         // Resume training from last sync file
-        size_t iteration = 0;
-        if (file_exists("dcgan_162x162_synth_faces.sync")) deserialize("dcgan_162x162_synth_faces.sync") >> generator >> discriminator >> iteration >> epoch;
+        if (file_exists("dcgan_162x162_synth_faces.sync")) {
+            deserialize("dcgan_162x162_synth_faces.sync") >> generator >> discriminator >> iteration >> epoch;
+        } else if (file_exists("dcgan_162x162_synth_faces.dnn")) {
+            deserialize("dcgan_162x162_synth_faces.dnn") >> generator >> discriminator;
+        }
 
         const size_t minibatch_size = 64;        
         const std::vector<float> real_labels(minibatch_size, 1);
@@ -497,18 +534,19 @@ int main(int argc, char** argv) try
             generator.update_parameters(g_solvers, learning_rate);
 
             // At some point, we should see that the generated images start looking like samples
-            if (++iteration % 10 == 0) { // Display
-                std::cout <<
-                    "epoch#: " << epoch <<
-                    "\tstep#: " << iteration <<                    
-                    "\tdiscriminator loss: " << d_loss.mean() * 2 <<
-                    "\tgenerator loss: " << g_loss.mean() << '\n';
+            if (++iteration % 10 == 0) { // Display                
                 for (auto& image : fake_samples) resize_inplace(image, default_display_image_size);
                 win.set_image(tile_images(fake_samples));
                 win.set_title("FAKES - DCGAN step#: " + to_string(iteration));
             }
-            if (iteration % 1000 == 0)
-            {
+            if (iteration % 100 == 0) { // Progress                
+                std::cout <<
+                    "epoch#: " << epoch <<
+                    "\tstep#: " << iteration <<
+                    "\tdiscriminator loss: " << d_loss.mean() * 2 <<
+                    "\tgenerator loss: " << g_loss.mean() << '\n';
+            }
+            if (iteration % 1000 == 0) { // Checkpoint                
                 serialize("dcgan_162x162_synth_faces.sync") << generator << discriminator << iteration << epoch;
                 d_loss.clear();
                 g_loss.clear();
@@ -548,31 +586,32 @@ int main(int argc, char** argv) try
             current_image = 0;
             is_real = false;
             while (!is_real && current_image++ < 30) {
+                std::lock_guard<std::mutex> lock(gen_mutex);
                 gen_image = generate_image_for_display<rgb_pixel>(generator, make_noise(rnd));
                 is_real = (discriminator(gen_image) > 0);
-            }
+            }         
             resize_inplace(gen_image, target_image_size);
             win.set_image(gen_image);
             sleep(500);
         }
     }
-    else if (option == "--web") {
-        try {
-            // Instantiate both generator and discriminator
-            cout << "Loading model... ";
-            display_generator_type generator;
-            display_discriminator_type discriminator;
-            if (file_exists("dcgan_162x162_synth_faces.dnn")) deserialize("dcgan_162x162_synth_faces.dnn") >> generator >> discriminator;
-            cout << "done" << endl;
+    else if (option == "--web") {        
+        // Instantiate both generator and discriminator
+        cout << "Loading model... ";
+        display_generator_type generator;
+        display_discriminator_type discriminator;
+        if (file_exists("dcgan_162x162_synth_faces.dnn")) deserialize("dcgan_162x162_synth_faces.dnn") >> generator >> discriminator;
+        cout << "done" << endl;
 
-            // Instantiate the Web server
-            g_web_server = true;
-            SetConsoleCtrlHandler(CtrlHandler, TRUE);
-            boost::asio::io_context io_context;            
-            tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 9190));
-            cout << "Listening on <http://localhost:9190>..." << endl;            
+        // Instantiate the Web server
+        g_web_server = true;
+        SetConsoleCtrlHandler(CtrlHandler, TRUE);
+        boost::asio::io_context io_context;            
+        tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 9190));
+        cout << "Listening on <http://localhost:9190>..." << endl;            
 
-            while (!g_interrupted) {
+        while (!g_interrupted) {
+            try {
                 tcp::socket socket(io_context);
                 acceptor.accept(socket);
 
@@ -585,8 +624,9 @@ int main(int argc, char** argv) try
                 http::write(socket, response);
                 socket.close();
             }
-        } catch (const std::exception& e) {
-            std::cerr << "Exception: " << e.what() << std::endl;
+            catch (const std::exception& e) {
+                std::cerr << "Exception: " << e.what() << std::endl;
+            }
         }
     }
     else {
