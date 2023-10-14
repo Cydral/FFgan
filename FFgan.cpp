@@ -173,7 +173,7 @@ matrix<pixel_type> generate_image(generator_type& net, const noise_t& noise) {
         matrix<float> output = image_plane(layer<2>(net).get_output(), 0, 0);
         for (long r = 0; r < output.nr(); ++r) {
             for (long c = 0; c < output.nc(); ++c) {
-                output(r, c) = __max(0, 0f, __min(1.0f, output(r, c)));
+                output(r, c) = __max(0.0f, __min(1.0f, output(r, c)));
             }
         }
         assign_image(image, 255 * output);
@@ -183,9 +183,9 @@ matrix<pixel_type> generate_image(generator_type& net, const noise_t& noise) {
         matrix<float> output_b = image_plane(layer<2>(net).get_output(), 0, 2);
         for (long r = 0; r < output_r.nr(); ++r) {
             for (long c = 0; c < output_r.nc(); ++c) {
-                output_r(r, c) = __max(0, 0f, __min(1.0f, output_r(r, c)));
-                output_g(r, c) = __max(0, 0f, __min(1.0f, output_g(r, c)));
-                output_b(r, c) = __max(0, 0f, __min(1.0f, output_b(r, c)));
+                output_r(r, c) = __max(0.0f, __min(1.0f, output_r(r, c)));
+                output_g(r, c) = __max(0.0f, __min(1.0f, output_g(r, c)));
+                output_b(r, c) = __max(0.0f, __min(1.0f, output_b(r, c)));
             }
         }
         matrix<gray_pixel> r_channel, g_channel, b_channel;
