@@ -28,8 +28,7 @@ const size_t default_display_image_size = 90;
 // Some helper definitions for the noise generation
 const size_t noise_size = 100;
 using noise_t = std::array<matrix<float, 1, 1>, noise_size>;
-noise_t make_noise(dlib::rand& rnd)
-{
+noise_t make_noise(dlib::rand& rnd) {
     noise_t noise;
     for (auto& n : noise) n = rnd.get_random_gaussian();
     return noise;
@@ -167,18 +166,28 @@ void resize_images(std::vector<matrix<pixel_type>>& images, long new_size = defa
 // Some helper functions to generate and get the images from the generator
 std::mutex gen_mutex;  // Déclaration du mutex
 template <typename pixel_type>
-matrix<pixel_type> generate_image(generator_type& net, const noise_t& noise)
-{
+matrix<pixel_type> generate_image(generator_type& net, const noise_t& noise) {
     net(noise);
     matrix<pixel_type> image;
     if constexpr (std::is_same_v<pixel_type, gray_pixel>) {
-        const matrix<float> output = image_plane(layer<2>(net).get_output(), 0, 0);
+        matrix<float> output = image_plane(layer<2>(net).get_output(), 0, 0);
+        for (long r = 0; r < output.nr(); ++r) {
+            for (long c = 0; c < output.nc(); ++c) {
+                output(r, c) = __max(0, 0f, __min(1.0f, output(r, c)));
+            }
+        }
         assign_image(image, 255 * output);
-    }
-    else {
+    } else {
         matrix<float> output_r = image_plane(layer<2>(net).get_output(), 0, 0);
         matrix<float> output_g = image_plane(layer<2>(net).get_output(), 0, 1);
         matrix<float> output_b = image_plane(layer<2>(net).get_output(), 0, 2);
+        for (long r = 0; r < output_r.nr(); ++r) {
+            for (long c = 0; c < output_r.nc(); ++c) {
+                output_r(r, c) = __max(0, 0f, __min(1.0f, output_r(r, c)));
+                output_g(r, c) = __max(0, 0f, __min(1.0f, output_g(r, c)));
+                output_b(r, c) = __max(0, 0f, __min(1.0f, output_b(r, c)));
+            }
+        }
         matrix<gray_pixel> r_channel, g_channel, b_channel;
         assign_image(r_channel, 255 * output_r);
         assign_image(g_channel, 255 * output_g);
@@ -188,15 +197,13 @@ matrix<pixel_type> generate_image(generator_type& net, const noise_t& noise)
     return image;
 }
 template <typename pixel_type>
-matrix<pixel_type> generate_image_for_display(display_generator_type& net, const noise_t& noise)
-{    
+matrix<pixel_type> generate_image_for_display(display_generator_type& net, const noise_t& noise) {
     net(noise);
     matrix<pixel_type> image;
     if constexpr (std::is_same_v<pixel_type, gray_pixel>) {
         const matrix<float> output = image_plane(layer<2>(net).get_output(), 0, 0);
         assign_image(image, 255 * output);
-    }
-    else {
+    } else {
         matrix<float> output_r = image_plane(layer<2>(net).get_output(), 0, 0);
         matrix<float> output_g = image_plane(layer<2>(net).get_output(), 0, 1);
         matrix<float> output_b = image_plane(layer<2>(net).get_output(), 0, 2);
@@ -210,8 +217,7 @@ matrix<pixel_type> generate_image_for_display(display_generator_type& net, const
 }
 
 template <typename pixel_type>
-std::vector<matrix<pixel_type>> get_generated_images(const tensor& out)
-{
+std::vector<matrix<pixel_type>> get_generated_images(const tensor& out) {
     std::vector<matrix<pixel_type>> images;
     matrix<pixel_type> image;
     if constexpr (std::is_same_v<pixel_type, gray_pixel>) {
@@ -221,10 +227,8 @@ std::vector<matrix<pixel_type>> get_generated_images(const tensor& out)
             assign_image(image, 255 * output);
             images.push_back(image);
         }
-    }
-    else {
-        for (long n = 0; n < out.num_samples(); ++n)
-        {
+    } else {
+        for (long n = 0; n < out.num_samples(); ++n) {
             matrix<float> r_output = image_plane(out, n, 0);
             matrix<float> g_output = image_plane(out, n, 1);
             matrix<float> b_output = image_plane(out, n, 2);
@@ -241,12 +245,10 @@ std::vector<matrix<pixel_type>> get_generated_images(const tensor& out)
 
 // Function to load and resize images from a directory recursively
 template <typename pixel_type>
-void load_images_from_directory(const fs::path& directory, std::vector<matrix<pixel_type>>& images, const int size, const int limit = 1e+6)
-{
+void load_images_from_directory(const fs::path& directory, std::vector<matrix<pixel_type>>& images, const int size, const int limit = 1e+6) {
     fs::recursive_directory_iterator end_itr;
     images.clear();
-    for (fs::recursive_directory_iterator itr(directory); itr != end_itr && images.size() < limit && !g_interrupted; ++itr)
-    {
+    for (fs::recursive_directory_iterator itr(directory); itr != end_itr && images.size() < limit && !g_interrupted; ++itr) {
         if (!fs::is_regular_file(itr->status()) || itr->path().extension() != ".jpg") continue;
         matrix<rgb_pixel> image;
         try { load_image(image, itr->path().string()); }
@@ -266,8 +268,7 @@ void load_images_from_directory(const fs::path& directory, std::vector<matrix<pi
         if (images.size() % 10000 == 0) cout << ".";
     }
 }
-void load_images_from_directory(const fs::path& directory, std::vector<fs::path>& images, const int limit = 1e+6)
-{
+void load_images_from_directory(const fs::path& directory, std::vector<fs::path>& images, const int limit = 1e+6) {
     fs::recursive_directory_iterator end_itr;
     images.clear();
     for (fs::recursive_directory_iterator itr(directory); itr != end_itr && images.size() < limit && !g_interrupted; ++itr)
@@ -278,8 +279,7 @@ void load_images_from_directory(const fs::path& directory, std::vector<fs::path>
     }
 }
 
-std::vector<fs::path> get_shuffled_paths(const std::vector<fs::path>& path_images)
-{
+std::vector<fs::path> get_shuffled_paths(const std::vector<fs::path>& path_images) {
     std::vector<fs::path> shuffled_paths = path_images;
     std::random_device rd;
     std::mt19937 g(rd());
@@ -364,11 +364,9 @@ bool set_load_jpeg_buffer(dlib::matrix<dlib::rgb_pixel>& in_img, std::vector<uns
 
     return compressed.size();
 }
-void handle_request(display_generator_type& gen, display_discriminator_type& disc, dlib::rand& rnd, const http::request<http::string_body>& req, http::response<http::string_body>& res)
-{
+void handle_request(display_generator_type& gen, display_discriminator_type& disc, dlib::rand& rnd, const http::request<http::string_body>& req, http::response<http::string_body>& res) {
     try {
-        if (req.method() == http::verb::get && (req.target().empty() || req.target() == "/get_raw_image" || req.target() == "/get_image" || req.target() == "/"))
-        {
+        if (req.method() == http::verb::get && (req.target().empty() || req.target() == "/get_raw_image" || req.target() == "/get_image" || req.target() == "/")) {
             const bool send_raw_data = (req.target() == "/get_raw_image");
             matrix<rgb_pixel> gen_image;
             bool is_real = false;
@@ -406,14 +404,12 @@ void handle_request(display_generator_type& gen, display_discriminator_type& dis
             res.result(http::status::ok);
             res.set(http::field::content_type, send_raw_data ? "text/plain" : "text/html");
             res.body() = std::move(html);
-        }
-        else {
+        } else {
             res.result(http::status::not_found);
             res.set(http::field::content_type, "text/plain");
             res.body() = std::move(std::string("Page not found"));
         }
-    }
-    catch (const std::exception& e) {
+    } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
         res.result(http::status::internal_server_error);
         res.set(http::field::content_type, "text/plain");
@@ -421,8 +417,7 @@ void handle_request(display_generator_type& gen, display_discriminator_type& dis
     }
 }
 
-int main(int argc, char** argv) try
-{
+int main(int argc, char** argv) try {
     if (argc < 2) {
         std::cout << "Usage: FFgan --train <directory>, --gen <number> or --web" << std::endl;
         return EXIT_FAILURE;
@@ -430,6 +425,7 @@ int main(int argc, char** argv) try
     std::string option = argv[1];
     std::srand(std::time(nullptr));
     dlib::rand rnd(std::rand());
+    set_dnn_prefer_smallest_algorithms();
     size_t epoch = 0, iteration = 0;
 
     if (option == "--train") {
@@ -477,12 +473,10 @@ int main(int argc, char** argv) try
         resizable_tensor real_samples_tensor, fake_samples_tensor, noises_tensor;
         running_stats<double> g_loss, d_loss;
         dlib::image_window win;
-        while (!g_interrupted)
-        {
+        while (!g_interrupted) {
             // Train the discriminator with real images            
             std::vector<matrix<rgb_pixel>> real_samples;            
-            while (real_samples.size() < minibatch_size)
-            {
+            while (real_samples.size() < minibatch_size) {
                 if (pool_images.size() == 0) {
                     pool_images = get_shuffled_paths(training_images);
                     epoch++;
@@ -499,6 +493,7 @@ int main(int argc, char** argv) try
                 real_samples.push_back(tmp_image);
             }            
             discriminator.to_tensor(real_samples.begin(), real_samples.end(), real_samples_tensor);
+            discriminator.forward(real_samples_tensor);
             d_loss.add(discriminator.compute_loss(real_samples_tensor, real_labels.begin()));
             discriminator.back_propagate_error(real_samples_tensor);
             discriminator.update_parameters(d_solvers, learning_rate);
@@ -514,6 +509,7 @@ int main(int argc, char** argv) try
             auto fake_samples = get_generated_images<rgb_pixel>(layer<2>(generator).get_output());
             // 4. Finally train the discriminator
             discriminator.to_tensor(fake_samples.begin(), fake_samples.end(), fake_samples_tensor);
+            discriminator.forward(fake_samples_tensor);
             d_loss.add(discriminator.compute_loss(fake_samples_tensor, fake_labels.begin()));
             discriminator.back_propagate_error(fake_samples_tensor);
             discriminator.update_parameters(d_solvers, learning_rate);
@@ -534,7 +530,7 @@ int main(int argc, char** argv) try
             generator.update_parameters(g_solvers, learning_rate);
 
             // At some point, we should see that the generated images start looking like samples
-            if (++iteration % 10 == 0) { // Display                
+            if (++iteration % 20 == 0) { // Display                
                 for (auto& image : fake_samples) resize_inplace(image, default_display_image_size);
                 win.set_image(tile_images(fake_samples));
                 win.set_title("FAKES - DCGAN step#: " + to_string(iteration));
@@ -558,8 +554,7 @@ int main(int argc, char** argv) try
         generator.clean();
         discriminator.clean();
         serialize("dcgan_162x162_synth_faces.dnn") << generator << discriminator;
-    }
-    else if (option == "--gen") {
+    } else if (option == "--gen") {
         if (argc < 3) {
             std::cout << "Please provide the total number of faked images to generate" << std::endl;
             return 1;
@@ -576,13 +571,13 @@ int main(int argc, char** argv) try
         cout << "done" << endl;
 
         dlib::image_window win;
+        const string suffix = "gen_face_";
         win.set_title("FAKES - Generated image");
         matrix<rgb_pixel> gen_image;
         bool is_real;
         size_t current_image, total_images = 0;
         size_t target_image_size = 150;
-        while (!win.is_closed() && total_images++ < max_images && !g_interrupted)
-        {
+        while (!win.is_closed() && total_images++ < max_images && !g_interrupted) {
             current_image = 0;
             is_real = false;
             while (!is_real && current_image++ < 30) {
@@ -591,11 +586,11 @@ int main(int argc, char** argv) try
                 is_real = (discriminator(gen_image) > 0);
             }         
             resize_inplace(gen_image, target_image_size);
+            save_jpeg(gen_image, suffix + to_string(current_image) + string(".jpg"), 95);
             win.set_image(gen_image);
             sleep(500);
         }
-    }
-    else if (option == "--web") {        
+    } else if (option == "--web") {        
         // Instantiate both generator and discriminator
         cout << "Loading model... ";
         display_generator_type generator;
@@ -628,14 +623,11 @@ int main(int argc, char** argv) try
                 std::cerr << "Exception: " << e.what() << std::endl;
             }
         }
-    }
-    else {
+    } else {
         std::cout << "Invalid option. Usage: FFgan --train <directory>, --gen <number> or --web" << std::endl;
     }
     return EXIT_SUCCESS;
-}
-catch (exception& e)
-{
+} catch (exception& e) {
     cout << e.what() << endl;
     return EXIT_FAILURE;
 }
