@@ -71,7 +71,7 @@ using display_generator_type = loss_binary_log_per_pixel<fc_no_bias<1,
 // image is fake or not.
 // For 162x162 images
 using discriminator_type = loss_binary_log<fc<1,
-    conp<3, 3, 1, 0,                                // 1
+    conp<3, 1, 1, 0,                                // 1
     dropout<leaky_relu<bn_con<conp<512, 4, 2, 1,    // 3
     dropout<leaky_relu<bn_con<conp<256, 3, 3, 1,    // 7
     dropout<leaky_relu<bn_con<conp<128, 4, 2, 1,    // 20
@@ -80,7 +80,7 @@ using discriminator_type = loss_binary_log<fc<1,
     input<matrix<rgb_pixel>>                        // 162
     >>>>>>>>>>>>>>>>>>>>>>;
 using display_discriminator_type = loss_binary_log<fc<1,
-    conp<3, 3, 1, 0,
+    conp<3, 1, 1, 0,
     dropout<leaky_relu<affine<conp<512, 4, 2, 1,
     dropout<leaky_relu<affine<conp<256, 3, 3, 1,
     dropout<leaky_relu<affine<conp<128, 4, 2, 1,
@@ -368,13 +368,14 @@ void handle_request(display_generator_type& gen, display_discriminator_type& dis
     try {
         if (req.method() == http::verb::get && (req.target().empty() || req.target() == "/get_raw_image" || req.target() == "/get_image" || req.target() == "/")) {
             const bool send_raw_data = (req.target() == "/get_raw_image");
+            const size_t max_iter_imgs = 15;
             matrix<rgb_pixel> gen_image;
             bool is_real = false;
             size_t current_image = 0, target_image_size = 150;            
-            while (!is_real && current_image++ < 10 && !g_interrupted) {
+            while (!is_real && current_image++ < max_iter_imgs && !g_interrupted) {
                 std::lock_guard<std::mutex> lock(gen_mutex);
                 gen_image = generate_image_for_display<rgb_pixel>(gen, make_noise(rnd));
-                is_real = (send_raw_data || (disc(gen_image) > 0));
+                is_real = (disc(gen_image) > 0);
             }            
             resize_inplace(gen_image, target_image_size);
             std::vector<unsigned char> compressed;
@@ -575,18 +576,18 @@ int main(int argc, char** argv) try {
         win.set_title("FAKES - Generated image");
         matrix<rgb_pixel> gen_image;
         bool is_real;
-        size_t current_image, total_images = 0;
+        size_t current_image, total_images = 0, label_image = 0;
         size_t target_image_size = 150;
-        while (!win.is_closed() && total_images++ < max_images && !g_interrupted) {
+        const size_t max_iter_imgs = 15;
+        while (!win.is_closed() && ++total_images <= max_images && !g_interrupted) {
             current_image = 0;
             is_real = false;
-            while (!is_real && current_image++ < 30) {
-                std::lock_guard<std::mutex> lock(gen_mutex);
+            while (!is_real && current_image++ < max_iter_imgs) {
                 gen_image = generate_image_for_display<rgb_pixel>(generator, make_noise(rnd));
                 is_real = (discriminator(gen_image) > 0);
             }         
             resize_inplace(gen_image, target_image_size);
-            save_jpeg(gen_image, suffix + to_string(current_image) + string(".jpg"), 95);
+            save_jpeg(gen_image, suffix + to_string(label_image++) + string(".jpg"), 95);
             win.set_image(gen_image);
             sleep(500);
         }
